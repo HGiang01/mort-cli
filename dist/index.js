@@ -1,7 +1,12 @@
+// -----------------------------------------------
 // IMPORTS
+// -----------------------------------------------
 import * as Constants from "./constants/index.js";
-// CONSTANTS
-// UNTILS
+import * as Inputs from './utils/inputTerminal.js';
+import * as Outputs from "./utils/outputTerminal.js";
+// -----------------------------------------------
+// SUBFUNCTIONS
+// -----------------------------------------------
 // Convert annual rate (%) to monthly interest rate (float)
 function toMonthlyInterestRate(annualRate) {
     return annualRate / 12 / 100;
@@ -12,39 +17,76 @@ function yearToMonth(year) {
 function validateLoanInputs(loanInfo) {
     // Loan amount must be positive
     if (loanInfo.loanPrincipal <= 0) {
-        return "📢 The loanPrincipal parameter isn't available";
+        throw new Error("📢 The Loan Principal is invalid");
     }
-    // Year must be greater than 1 and positive
-    if (loanInfo.yearOfLoan < 1 || loanInfo.yearOfLoan % 2 != 0) {
-        return "📢 The yearOfLoan parameter isn't available";
+    // Year must be greater than 1 and integer number
+    if (loanInfo.yearOfLoan < 1 || !Number.isInteger(loanInfo.yearOfLoan)) {
+        throw new Error("📢 The year is invalid");
     }
     else if (loanInfo.yearOfLoan >= Constants.MAXIMUM_YEARS) {
-        return "😒 Are you human???";
+        throw new Error("😒 The number of years is too large, can you live that long to pay off the debt ???");
     }
     // Annual Rate must be greater than or equal to 0
     if (loanInfo.annualRate) {
         if (loanInfo.annualRate < 0) {
-            return "📢 The annualRate parameter isn't available";
+            throw new Error("📢 The Annual Rate is invalid");
         }
         else if (loanInfo.annualRate >= Constants.MAXIMUM_INTEREST_RATE) {
-            return "😒 Are you human???";
+            throw new Error("😒 Are you robber ???");
         }
     }
     return true;
 }
+// -----------------------------------------------
 // MAIN FUNCTION
+// -----------------------------------------------
 function monthlyPayment(loanInfo) {
-    if (validateLoanInputs(loanInfo) != true)
-        return false;
     const p = loanInfo.loanPrincipal;
     const n = yearToMonth(loanInfo.yearOfLoan);
     // Annual Rate equal to 0
-    if (!loanInfo.annualRate) {
+    if (loanInfo.annualRate == 0) {
         return p / n;
     }
     const r = toMonthlyInterestRate(loanInfo.annualRate);
     return p * ((r * (1 + r) ** n) / ((1 + r) ** n - 1));
 }
-// UI/DISPLAY FUNCTIONS
+// -----------------------------------------------
 // MAIN EXECUTION
-// EXPORTS
+// -----------------------------------------------
+async function main() {
+    let result = 0;
+    let messResult;
+    let shouldContinue = true;
+    while (shouldContinue) {
+        try {
+            // Render app name
+            await Outputs.logMessage("Mortgage CLI");
+            // Form inputs
+            const loanInfo = await Inputs.inputForms();
+            // Validate field inputs
+            if (validateLoanInputs(loanInfo)) {
+                // Calculate monthly payment for loan
+                result = monthlyPayment(loanInfo);
+            }
+            // Render result
+            messResult = Outputs.moneyFormat(result.toFixed(4));
+            await Outputs.messageRainbow(messResult);
+            // Retry option
+            shouldContinue = await Inputs.retryOption();
+            if (shouldContinue) {
+                console.clear();
+            }
+        }
+        catch (err) {
+            console.log(err);
+            // Retry option
+            shouldContinue = await Inputs.retryOption();
+            if (shouldContinue) {
+                console.clear();
+            }
+        }
+    }
+    return result;
+}
+main();
+export default main;
